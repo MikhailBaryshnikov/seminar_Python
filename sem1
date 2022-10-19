@@ -1,1 +1,157 @@
 
+import re
+import itertools
+from sys import argv
+import os.path
+
+def task1():
+	print("Напишите программу, которая принимает на вход цифру, обозначающую день недели, и проверяет, является ли этот день выходным.")
+	
+	num = int(input("Введите день недели в виде числа от 1 до 7 включительно: "))
+	while( 0 > num or num > 7):
+		print("num: ", num)
+		num = int(input("Введите цифру от 1 до 7 включительно: "))
+		
+	week = {}
+	week[0]="Mon"
+	week[1]="Tue"
+	week[2]="Wed"
+	week[3]="Thu"
+	week[4]="Fri"
+	week[5]="Sat"
+	week[6]="Sun"
+
+	if( (num-1) == 5 or (num-1) == 6): print(num, " день - выходной: ", week[num-1])
+	else: print(num, " день - не выходной: ", week[num-1])
+
+def task2():
+	print("Напишите программу для. проверки истинности утверждения ¬(X ⋁ Y ⋁ Z) = ¬X ⋀ ¬Y ⋀ ¬Z для всех значений предикат.")
+	
+	rang = [True, False]
+	for x in rang:
+		for y in rang:
+			for z in rang:
+				if (-(x or y or z) == ((-x) and (-y) and (-z))  ):
+					print("{x:y:z}:", x, ":", y, ":", z, "result: ",  True)
+				else: print("{x:y:z}:", x, ":", y, ":", z, "result: ",  False)
+
+def chetvert_proverka(x, y):
+	if(x > 0 and y > 0): return 1
+	if(x < 0 and y > 0): return 2
+	if(x < 0 and y < 0): return 3
+	if(x > 0 and y < 0): return 4
+
+def task3():
+	print("Напишите программу, которая принимает на вход координаты точки (X и Y), причём X ≠ 0 и Y ≠ 0 и выдаёт номер четверти плоскости, в которой находится эта точка (или на какой оси она находится).")
+	
+	x = float(input("Введите число x: "))
+	y = float(input("Введите число y: "))
+	print("Для точки (", x, ";", y, ") номер четверти плоскости: ", chetvert_proverka(x, y) )
+
+def point_from_chetvert(num):
+	x_y = [0, 0]
+	if(num == 1): 
+		x_y[0] = [0, 100]
+		x_y[1] = [0, 100]
+		return x_y
+	if(num == 2): 
+		x_y[0] = [-100, 0]
+		x_y[1] = [0, 100]
+		return x_y
+	if(num == 3):
+		x_y[0] = [-100, 0]
+		x_y[1] = [-100, 0]
+		return x_y
+	if(num == 4):
+		x_y[0] = [0, 100]
+		x_y[1] = [-100, 0]
+		return x_y
+
+def task4():
+	print("Напишите программу, которая по заданному номеру четверти, показывает диапазон возможных координат точек в этой четверти (x и y).")
+	
+	num = int(input("Введите номер четверти от 1 до 4 включительно: "))
+	while( 0 > num or num > 4):
+		print("num: ", num)
+		num = int(input("Введите номер четверти от 1 до 4 включительно: "))
+	print("Диапазон возможных координат точек в ", num," четверти: ", point_from_chetvert(num))
+	
+
+def read_pol(file):
+    with open(str(file), 'r') as data:
+        pol = data.read()
+    return pol
+
+def convert_pol(pol):
+    pol = pol.replace('= 0', '')
+    pol = pol.replace('\n', '')   
+    pol = re.sub("[*|^| ]", " ", pol).split('+')
+    pol = [char.split(' ') for char in pol]
+    pol = [[x for x in list if x] for list in pol]
+    for i in pol:
+        if i[0] == 'x': i.insert(0, 1)
+        if i[-1] == 'x': i.append(1)
+        if len(i) == 1: i.append(0)
+    #for i in pol:
+    #    print(i)	
+    pol = [tuple(int(x) for x in j if x != 'x') for j in pol]
+    return pol
+
+def fold_pols(pol1, pol2):   
+    x = [0] * (max(pol1[0][1] + 1, pol2[0][1] + 2))
+    #print(x)
+    #print(pol1 + pol2)
+    for i in pol1 + pol2:      
+        x[i[1]] += i[0]
+        #print(x[i[1]])  
+    res = [(x[i], i) for i in range(len(x)) if x[i] != 0]
+    res.sort(key = lambda r: r[1], reverse = True)
+    return res
+
+def get_sum_pol(pol):
+    var = ['*x^'] * len(pol)
+    coefs = [x[0] for x in pol]
+    degrees = [x[1] for x in pol]
+    new_pol = [[str(a), str(b), str(c)] for a, b, c in (zip(coefs, var, degrees))]
+    for x in new_pol:
+        if x[0] == '0': del (x[0])
+        if x[-1] == '0': del (x[-1], x[-1])
+        if len(x) > 1 and x[0] == '1' and x[1] == '*x^': del (x[0], x[0][0])
+        if len(x) > 1 and x[-1] == '1': 
+            del x[-1]
+            x[-1] = '*x'
+        x.append(' + ')
+    new_pol = list(itertools.chain(*new_pol))
+    new_pol[-1] = ' = 0'
+    return "".join(map(str, new_pol))
+
+def write_to_file(file, pol):
+    with open(file, 'w') as data:
+        data.write(pol)
+
+
+def task5():
+	print("Даны два файла, в каждом из которых находится запись многочленов. Задача - сформировать файл, содержащий сумму многочленов.")
+
+	file1 = 'Polynomial1.txt'
+	file2 = 'Polynomial2.txt'
+	file_sum = 'Sum_polynomials.txt'
+
+	pol1 = read_pol(file1)
+	pol2 = read_pol(file2)
+	pol_1 = convert_pol(pol1)
+	pol_2 = convert_pol(pol2)
+
+	pol_sum = get_sum_pol(fold_pols(pol_1, pol_2))
+	write_to_file(file_sum, pol_sum)
+
+	print(pol1)
+	print(pol2)
+	print(pol_sum)
+
+	
+#task1()
+#task2()
+#task3()
+#task4()
+task5()
